@@ -1,5 +1,9 @@
 package com.svr.app.ws.ui.controller;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 import javax.validation.Valid;
 
 import org.springframework.beans.BeanUtils;
@@ -16,12 +20,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.svr.app.ws.ui.model.request.UpdateUserDetailsRequestModel;
 import com.svr.app.ws.ui.model.request.UserDetailsRequestModel;
 import com.svr.app.ws.ui.model.response.UserRest;
 
 @RestController
 @RequestMapping("users") // http://localhost:8080/users
 public class UserController {
+	
+	Map<String, UserRest> users;
 	
 	@GetMapping
 	public String getUsers(@RequestParam(value="page", defaultValue = "1") int page, 
@@ -50,18 +57,30 @@ public class UserController {
 		UserRest returnValue = new UserRest();
 		BeanUtils.copyProperties(userDetails, returnValue);
 		
+		if(users == null) users = new HashMap<String, UserRest>();
+		
+		String uuid = UUID.randomUUID().toString();
+		returnValue.setUserId(uuid);
+		users.put(uuid, returnValue);
+		
 		return new ResponseEntity<UserRest>(returnValue, HttpStatus.CREATED);
 	}
 	
-	@PutMapping
-	public String updateuser() {
+	@PutMapping(path="/{userId}")
+	public ResponseEntity<UserRest> updateuser(@PathVariable String userId,@Valid @RequestBody UpdateUserDetailsRequestModel userDetails) {
+		// update first name and last name only
+		if(!users.containsKey(userId)) return new ResponseEntity<UserRest>(HttpStatus.BAD_REQUEST);
+		UserRest storedUserDetails = users.get(userId);
+		storedUserDetails.setFirstName(userDetails.getFirstName());
+		storedUserDetails.setLastName(userDetails.getLastName());
 		
-		return "update user was called";
+		return new ResponseEntity<UserRest>(storedUserDetails, HttpStatus.OK);
 	}
 	
-	@DeleteMapping
-	public String deleteUser() {
-		
-		return "delete user was called";
+	@DeleteMapping(path="/{userId}")
+	public ResponseEntity<Void> deleteUser(@PathVariable String userId) {
+		if(!users.containsKey(userId)) return new ResponseEntity<Void>(HttpStatus.BAD_REQUEST);
+		users.remove(userId);
+		return new ResponseEntity<Void>(HttpStatus.NO_CONTENT);
 	}
 }
